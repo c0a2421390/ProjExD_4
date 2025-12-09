@@ -312,6 +312,26 @@ class Shield(pg.sprite.Sprite):
             self._update_image()  # 毎フレーム画像を更新してこうかとんに追従
 
 
+class Gravity(pg.sprite.Sprite):
+    """
+    画面全体を覆う重力場を発生させる
+    """
+    def __init__(self, life: int):
+        super().__init__()
+        self.image = pg.Surface((WIDTH, HEIGHT))
+        pg.draw.rect(self.image, (0, 0, 0), (0, HEIGHT, WIDTH, 0))
+        self.image.set_alpha(50)
+        self.rect = self.image.get_rect()
+        self.life = life
+        
+    
+    def update(self):
+        self.life -= 1
+        if self.life < 0:
+            self.kill()
+
+
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -324,6 +344,7 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     shields = pg.sprite.Group()  # 防御壁グループ
+    gravity = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -358,6 +379,21 @@ def main():
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
 
+        if key_lst[pg.K_RETURN] and score.value >= 200 and len(gravity) == 0:       #連射対策
+            gravity.add(Gravity(400))
+            score.value -= 200
+
+        for gra, hit_emys in pg.sprite.groupcollide(gravity, emys, False, True).items():
+            for emy in hit_emys:
+                exps.add(Explosion(emy, 100))
+                score.value += 10
+                bird.change_img(6, screen)
+            
+        for gra, hit_bombs in pg.sprite.groupcollide(gravity, bombs, False, True).items():
+            for bomb in hit_bombs:
+                exps.add(Explosion(bomb, 50))
+                score.value += 1
+        
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():  # ビームと衝突した敵機リスト
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             score.value += 10  # 10点アップ
@@ -393,6 +429,8 @@ def main():
         exps.draw(screen)
         shields.update()  # 防御壁更新
         shields.draw(screen)  # 防御壁描画
+        gravity.update()
+        gravity.draw(screen)
         score.update(screen)
         pg.display.update()
         tmr += 1
@@ -404,3 +442,4 @@ if __name__ == "__main__":
     main()
     pg.quit()
     sys.exit()
+    
